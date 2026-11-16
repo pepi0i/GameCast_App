@@ -32,7 +32,7 @@ if home_team == away_team:
 else:
     st.success(f"Valid Matchup: {home_team} vs {away_team}")
 if home_team != away_team and st.button("Predict Match", disabled=home_team == away_team):
-    result = predict_match(model, home_team, away_team) #Calling the real prediction function from predictor.py
+    result = predict_match(home_team, away_team) #Calling the real prediction function from predictor.py
 
     for note in result["notes"]: #Looping through any warnings (e.g. a newly promoted team)
         st.warning(note) #Showing each warning
