@@ -162,7 +162,7 @@ def predict_match(home_team, away_team, model):
         )
     )[0]
 
-        print(f"\n=== {home_team} (Elo: {h['Elo']:.0f}) vs {away_team} (Elo: {a['Elo']:.0f}) ===")
+    print(f"\n=== {home_team} (Elo: {h['Elo']:.0f}) vs {away_team} (Elo: {a['Elo']:.0f}) ===")
     print(f"Expected goals: {home_team} {lam_home:.2f} - {lam_away:.2f} {away_team}")
     print(f"Home Win ({home_team}): {probs[2]:.1%}")
     print(f"Draw:                 {probs[1]:.1%}")
