@@ -10,12 +10,10 @@ from sklearn.metrics import log_loss, accuracy_score
 
 
 #Setting up the base directory and the model settings
-BASE_DIR = Path(__file__).resolve().parent.parent #Going up two folders from the current script to reach the project root
+BASE_DIR = Path(__file__).resolve().parent #Going up one folders from the current script to reach the project root
 STATS = ["GF", "GA", "SF", "SA", "SFT", "SAT"] #Six stats per team that will be used to train the model
 MAX_GOALS = 10 #Largest number of goals per team we calculate probabilities for
 OFFSEASON = False #Set to True if the match you are predicting is the first of a new season (applies the same summer Elo regression as training)
-RUN_VALIDATION = False #Set to False to skip the walk-forward validation and start predicting faster
-TUNE_ALPHA = True #Set to True to test several regularization strengths and automatically use the best one
 ALPHA = 0.1 #Regularization strength of the Poisson models (only used as-is when TUNE_ALPHA is False)
 WF_SEASONS = 5 #Number of most recent seasons used as walk-forward test seasons
 
@@ -44,31 +42,10 @@ def scoreline_grid(lam_home, lam_away):
     return matrix, probs
 
 
-def walk_forward(alpha, n_test_seasons=WF_SEASONS):
-    test_seasons = sorted(df["Season"].unique())[-n_test_seasons:]
-    rows = []
-    for s in test_seasons:
-        train, test = df[df["Season"] < s], df[df["Season"] == s]
-        hm = build_poisson(alpha).fit(train[feature_cols], train["FTHG"])
-        am = build_poisson(alpha).fit(train[feature_cols], train["FTAG"])
-        probs = np.array([scoreline_grid(h, a)[1] for h, a in zip(hm.predict(test[feature_cols]), am.predict(test[feature_cols]))])
-        base_rates = train["ResultCode"].value_counts(normalize=True).reindex([0, 1, 2]).values
-        base_probs = np.tile(base_rates, (len(test), 1))
-        rows.append({
-            "Season": f"{s}-{str(s + 1)[-2:]}",
-            "Matches": len(test),
-            "LogLoss": log_loss(test["ResultCode"], probs, labels=[0, 1, 2]),
-            "BaseLogLoss": log_loss(test["ResultCode"], base_probs, labels=[0, 1, 2]),
-            "Accuracy": accuracy_score(test["ResultCode"], probs.argmax(axis=1)),
-            "HomeWinBase": (test["ResultCode"] == 2).mean()
-        })
-    return pd.DataFrame(rows)
-
-
 def load_model():
     global df, feature_cols, home_model, away_model, elo_state
 
-    df = pd.read_csv(BASE_DIR / "Data" / "matches_features.csv")
+    df = pd.read_csv(BASE_DIR / "matches_features.csv")
     df["Date"] = pd.to_datetime(df["Date"])
     df = df.sort_values(["Date", "Time"]).reset_index(drop=True)
     df["Season"] = np.where(df["Date"].dt.month >= 8, df["Date"].dt.year, df["Date"].dt.year - 1)
@@ -138,6 +115,6 @@ def predict_match(home_team, away_team):
     return {"home_win": probs[2], "draw": probs[1], "away_win": probs[0], "exp_home_goals": lam_home, "exp_away_goals": lam_away}
 
 
-load_model()
+
 
 
