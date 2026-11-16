@@ -4,8 +4,8 @@ import pandas as pd
 import streamlit as st
 
 #Making sure Python can find predictor.py (change "Model" if you put predictor.py in a different folder)
-sys.path.append(str(Path(__file__).resolve().parent / "Model")) #Adding the Model folder to the places Python looks for imports
-from predictor import load_model, predict_match #Importing the two functions the page needs
+sys.path.append(str(Path(__file__).resolve().parent / "github")) #Adding the Model folder to the places Python looks for imports
+from poisson_model import load_model, predict_match #Importing the two functions the page needs
 
 
 #Training the model only once and reusing it on every click (without this, the model would retrain every time the page reruns)
