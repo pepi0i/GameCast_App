@@ -74,54 +74,115 @@ def load_model():
 
 
 #Function to grab a team's most up-to-date Elo rating and last 15 games of stats
-def get_latest_team_state(team_name):
-    team_matches = df[(df["HomeTeam"] == team_name) | (df["AwayTeam"] == team_name)]
+def get_latest_team_state(team_name, model):
+
+    df = model["df"]
+    elo_state = model["elo_state"]
+
+    team_matches = df[
+        (df["HomeTeam"] == team_name) |
+        (df["AwayTeam"] == team_name)
+    ]
+
     if team_matches.empty:
-        raise ValueError(f"Team '{team_name}' not found. Available teams: {sorted(df['HomeTeam'].unique())}")
+        raise ValueError(f"Team '{team_name}' not found.")
 
     records = []
+
     for row in team_matches.itertuples():
+
         if row.HomeTeam == team_name:
-            records.append({"GF": row.FTHG, "GA": row.FTAG, "SF": row.HS, "SA": row.AS, "SFT": row.HST, "SAT": row.AST})
+            records.append({
+                "GF": row.FTHG,
+                "GA": row.FTAG,
+                "SF": row.HS,
+                "SA": row.AS,
+                "SFT": row.HST,
+                "SAT": row.AST
+            })
+
         else:
-            records.append({"GF": row.FTAG, "GA": row.FTHG, "SF": row.AS, "SA": row.HS, "SFT": row.AST, "SAT": row.HST})
+            records.append({
+                "GF": row.FTAG,
+                "GA": row.FTHG,
+                "SF": row.AS,
+                "SA": row.HS,
+                "SFT": row.AST,
+                "SAT": row.HST
+            })
 
     hist = pd.DataFrame(records)
+
     elo = elo_state.get(team_name, 1450.0)
+
     if OFFSEASON:
         elo = 0.75 * elo + 0.25 * 1500.0
+
     state = {"Elo": elo}
+
     for stat in STATS:
         state[f"{stat}_Last15"] = hist[stat].tail(15).mean()
+
     return state
 
-
 #Function to predict the outcome probabilities and most likely scorelines of an upcoming match
-def predict_match(home_team, away_team):
-    h = get_latest_team_state(home_team)
-    a = get_latest_team_state(away_team)
+def predict_match(home_team, away_team, model):
 
-    row = {"Home_Elo": h["Elo"], "Away_Elo": a["Elo"], "Diff_Elo": h["Elo"] - a["Elo"]}
+    h = get_latest_team_state(home_team, model)
+    a = get_latest_team_state(away_team, model)
+
+    feature_cols = model["feature_cols"]
+    home_model = model["home_model"]
+    away_model = model["away_model"]
+
+    row = {
+        "Home_Elo": h["Elo"],
+        "Away_Elo": a["Elo"],
+        "Diff_Elo": h["Elo"] - a["Elo"]
+    }
+
     for stat in STATS:
         row[f"Home_{stat}_Last15"] = h[f"{stat}_Last15"]
         row[f"Away_{stat}_Last15"] = a[f"{stat}_Last15"]
-        row[f"Diff_{stat}_Last15"] = h[f"{stat}_Last15"] - a[f"{stat}_Last15"]
+        row[f"Diff_{stat}_Last15"] = (
+            h[f"{stat}_Last15"] - a[f"{stat}_Last15"]
+        )
 
     X_match = pd.DataFrame([row])[feature_cols]
+
     lam_home = home_model.predict(X_match)[0]
     lam_away = away_model.predict(X_match)[0]
-    matrix, probs = scoreline_grid(lam_home, lam_away)
-    top = np.dstack(np.unravel_index(np.argsort(matrix.ravel())[::-1][:3], matrix.shape))[0]
 
-    print(f"\n=== {home_team} (Elo: {h['Elo']:.0f}) vs {away_team} (Elo: {a['Elo']:.0f}) ===")
+    matrix, probs = scoreline_grid(lam_home, lam_away)
+
+    top = np.dstack(
+        np.unravel_index(
+            np.argsort(matrix.ravel())[::-1][:3],
+            matrix.shape
+        )
+    )[0]
+
+        print(f"\n=== {home_team} (Elo: {h['Elo']:.0f}) vs {away_team} (Elo: {a['Elo']:.0f}) ===")
     print(f"Expected goals: {home_team} {lam_home:.2f} - {lam_away:.2f} {away_team}")
     print(f"Home Win ({home_team}): {probs[2]:.1%}")
     print(f"Draw:                 {probs[1]:.1%}")
     print(f"Away Win ({away_team}): {probs[0]:.1%}")
     print("Most likely scores: " + ", ".join(f"{i}-{j} ({matrix[i, j]:.1%})" for i, j in top))
-    return {"home_win": probs[2], "draw": probs[1], "away_win": probs[0], "exp_home_goals": lam_home, "exp_away_goals": lam_away}
 
-
-
-
-
+    return {
+        "home_win": probs[2],
+        "draw": probs[1],
+        "away_win": probs[0],
+        "exp_home_goals": lam_home,
+        "exp_away_goals": lam_away,
+        "home_elo": h["Elo"],
+        "away_elo": a["Elo"],
+        "top_scores": [
+            {
+                "score": f"{i}-{j}",
+                "prob": matrix[i, j]
+            }
+            for i, j in top
+        ],
+        "notes": []
+    }
