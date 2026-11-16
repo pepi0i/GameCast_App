@@ -63,7 +63,14 @@ def load_model():
     with open(BASE_DIR / "elo_state.json") as f:
         elo_state = json.load(f)["elo"]
 
-    return {"df": df, "feature_cols": feature_cols, "home_model": home_model, "away_model": away_model, "elo_state": elo_state}
+    return {
+    "df": df,
+    "feature_cols": feature_cols,
+    "home_model": home_model,
+    "away_model": away_model,
+    "elo_state": elo_state,
+    "current_teams": sorted(df["HomeTeam"].unique())
+}
 
 
 #Function to grab a team's most up-to-date Elo rating and last 15 games of stats
