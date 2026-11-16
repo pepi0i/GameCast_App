@@ -40,7 +40,7 @@ else:
 if home_team != away_team and st.button("Predict Match"):
 
     # Predict the match
-    result = predict_match(home_team, away_team)
+    result = predict_match(home_team, away_team, model)
 
     # Display warnings
     for note in result["notes"]:
