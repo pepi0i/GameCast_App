@@ -60,7 +60,7 @@ def load_model():
     home_model = build_poisson(ALPHA).fit(df[feature_cols], df["FTHG"])
     away_model = build_poisson(ALPHA).fit(df[feature_cols], df["FTAG"])
 
-    with open(BASE_DIR / "Data" / "elo_state.json") as f:
+    with open(BASE_DIR / "elo_state.json") as f:
         elo_state = json.load(f)["elo"]
 
     return {"df": df, "feature_cols": feature_cols, "home_model": home_model, "away_model": away_model, "elo_state": elo_state}
