@@ -16,7 +16,7 @@ def get_model():
 model = get_model()
 
 # Get available teams
-teams = model["current_teams"]
+teams = sorted(model["df"]["HomeTeam"].dropna().unique())
 
 
 st.title("GameCast Match Predictor")
